@@ -1,4 +1,4 @@
-import { Component } from "react";
+import { useState, useEffect } from "react";
 
 import api from "../services/api.js";
 import { Searchbar } from "./Searchbar/Searchbar";
@@ -7,88 +7,93 @@ import { Modal } from "./Modal/Modal";
 import { Button } from "./Button/Button";
 import { Loader } from "./Loader/Loader";
 
-class App extends Component {
-  state = {
-    query: "",
-    pictures: [],
-    isLoading: false,
-    error: "",
-    page: 1,
-    modalIsOpen: false,
-    bigFormatUrl: "",
-  };
+const App = () => {
+  const [query, setQuery] = useState("");
+  const [pictures, setPictures] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [modalIsOpen, setModalIsOpen] = useState(false);
+  const [bigFormatUrl, setBigFormatUrl] = useState("");
 
-  searchValue = evt => {
+  useEffect(() => {
+    getApi(query, page);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [query, page]);
+
+  const searchValue = evt => {
     evt.preventDefault();
     const searchValue = evt.target.name.value;
-    this.setState({ query: searchValue, page: 1 });
+
+    setPictures([]);
+    setQuery(searchValue);
+    setPage(1);
   };
 
-  loadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const loadMore = () => {
+    console.log(page);
+
+    setPage(page + 1);
   };
 
-  getApi = async (query, page) => {
-    this.setState({ isLoading: true });
-    try {
-      const pictures = await api.fetchGalleryWithQuery(query, page);
-      this.setState(prevState => ({
-        pictures: [...prevState.pictures, ...pictures],
-      }));
-    } catch (err) {
-      this.setState({ error: err });
-    } finally {
-      setTimeout(() => {
-        this.setState({ isLoading: false });
-        {
-          page > 1 &&
-            window.scrollBy({
-              top: 260,
-              behavior: "smooth",
-            });
-        }
-      }, 500);
+  const getApi = async (query, page) => {
+    if (query === "") {
+      setPictures([]);
+    } else {
+      setIsLoading(true);
+      try {
+        const newPictures = await api.fetchGalleryWithQuery(query, page);
+
+        setPictures([...pictures, ...newPictures]);
+      } catch (err) {
+        setError(err);
+        console.error(error);
+      } finally {
+        setTimeout(() => {
+          setIsLoading(false);
+          {
+            page > 1 &&
+              window.scrollBy({
+                top: 260,
+                behavior: "smooth",
+              });
+          }
+        }, 500);
+      }
     }
   };
 
-  openModal = src => {
-    this.setState({ modalIsOpen: true, bigFormatUrl: src });
+  const openModal = src => {
+    setModalIsOpen(true);
+    setBigFormatUrl(src);
   };
 
-  closeModal = () => {
-    this.setState({ modalIsOpen: false, bigFormatUrl: "" });
+  const closeModal = () => {
+    setModalIsOpen(false);
+    setBigFormatUrl("");
   };
 
-  closeModalEsc = evt => {
+  const closeModalEsc = evt => {
     if (evt.key === "Escape") {
-      this.closeModal();
+      closeModal();
     }
   };
 
-  render() {
-    const { pictures, query, isLoading, modalIsOpen, bigFormatUrl, alt } = this.state;
-    return (
-      <div className='App'>
-        <Searchbar OnSubmit={this.searchValue} />
-        <ImageGallery pictures={pictures} openModal={this.openModal} modalIsOpen={modalIsOpen} />
-        {isLoading ? <Loader /> : query ? <Button OnSubmit={this.loadMore} /> : null}
-        {modalIsOpen && (
-          <Modal
-            img={bigFormatUrl}
-            alt={alt}
-            onClose={this.closeModal}
-            onKeyDown={this.closeModalEsc}
-          />
-        )}
-      </div>
-    );
-  }
-  componentDidUpdate(_, prevState) {
-    const { query, page } = this.state;
-    if (query !== prevState.query || page !== prevState.page) {
-      this.getApi(query, page);
-    }
-  }
-}
+  return (
+    <div className='App'>
+      <Searchbar OnSubmit={searchValue} />
+      <ImageGallery pictures={pictures} openModal={openModal} modalIsOpen={modalIsOpen} />
+      {isLoading ? <Loader /> : query ? <Button OnSubmit={loadMore} /> : null}
+      {modalIsOpen && (
+        <Modal
+          img={bigFormatUrl}
+          alt={pictures.alt}
+          onClose={closeModal}
+          onKeyDown={closeModalEsc}
+        />
+      )}
+    </div>
+  );
+};
 
 export default App;
