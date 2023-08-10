@@ -31,8 +31,6 @@ const App = () => {
   };
 
   const loadMore = () => {
-    console.log(page);
-
     setPage(page + 1);
   };
 
